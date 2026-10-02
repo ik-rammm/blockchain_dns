@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BLOCKCHAIN DNS · SOC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070a0d; --panel:#0d1217; --panel-2:#10171e; --line:#1c2832;
+    --ink:#cdd9e0; --dim:#6b7d8a; --faint:#3c4954;
+    --green:#27e08a; --amber:#ffb02e; --red:#ff3b52; --blue:#3aa0ff; --violet:#9d7bff;
+    --green-bg:rgba(39,224,138,.08); --red-bg:rgba(255,59,82,.10);
+    --amber-bg:rgba(255,176,46,.10); --blue-bg:rgba(58,160,255,.08);
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+    --disp:'Chakra Petch',var(--mono);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(58,160,255,.06), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, rgba(157,123,255,.05), transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--mono); font-size:13px; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{ /* scanline texture */
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:9999; opacity:.35;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px);
+  }
+  a{color:var(--blue)}
+  .wrap{max-width:1480px;margin:0 auto;padding:18px 22px 60px}
+
+  /* ── Header ───────────────────────────────────── */
+  header{display:flex;align-items:center;gap:18px;padding:14px 0 18px;border-bottom:1px solid var(--line);margin-bottom:20px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:13px}
+  .logo{width:38px;height:38px;border:1px solid var(--green);border-radius:7px;display:grid;place-items:center;color:var(--green);position:relative;box-shadow:0 0 22px rgba(39,224,138,.25) inset}
+  .logo svg{width:22px;height:22px}
+  .title{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:.06em;color:#eaf3f7}
+  .title b{color:var(--green)}
+  .subtitle{color:var(--dim);font-size:11px;letter-spacing:.22em;text-transform:uppercase}
+  .spacer{flex:1}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:11.5px;letter-spacing:.05em}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .dot.live{background:var(--green);box-shadow:0 0 0 0 rgba(39,224,138,.6);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(39,224,138,.5)}70%{box-shadow:0 0 0 7px rgba(39,224,138,0)}100%{box-shadow:0 0 0 0 rgba(39,224,138,0)}}
+  .clock{font-variant-numeric:tabular-nums;color:var(--dim)}
+
+  /* ── Stat tiles ───────────────────────────────── */
+  .tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+  .tile{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:10px;padding:14px 15px;position:relative;overflow:hidden}
+  .tile .k{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .tile .v{font-family:var(--disp);font-weight:700;font-size:30px;line-height:1.1;margin-top:8px;font-variant-numeric:tabular-nums}
+  .tile .edge{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--faint)}
+  .tile.green .v{color:var(--green)} .tile.green .edge{background:var(--green)}
+  .tile.red .v{color:var(--red)} .tile.red .edge{background:var(--red)}
+  .tile.blue .v{color:var(--blue)} .tile.blue .edge{background:var(--blue)}
+  .tile.amber .v{color:var(--amber)} .tile.amber .edge{background:var(--amber)}
+  .tile.violet .v{color:var(--violet)} .tile.violet .edge{background:var(--violet)}
+  .tile .sub{font-size:10.5px;color:var(--faint);margin-top:3px}
+
+  /* ── Layout grid ──────────────────────────────── */
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:10px;padding:12px 15px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+  .card-h h2{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin:0;color:#dfeaef}
+  .card-h .count{margin-left:auto;color:var(--dim);font-size:11px}
+  .card-b{padding:6px 0;max-height:430px;overflow:auto}
+  .card-b.pad{padding:14px 15px}
+
+  /* ── Feed rows ────────────────────────────────── */
+  .row{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;padding:8px 15px;border-bottom:1px solid rgba(28,40,50,.5);animation:slidein .3s ease}
+  @keyframes slidein{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+  .row:last-child{border-bottom:0}
+  .row .t{color:var(--faint);font-size:10.5px;font-variant-numeric:tabular-nums}
+  .row .mid .dom{color:var(--ink);font-weight:500}
+  .row .mid .meta{color:var(--dim);font-size:10.5px;margin-top:2px}
+  .row .mid .meta b{color:var(--amber);font-weight:500}
+  .badge{font-family:var(--disp);font-weight:600;font-size:10.5px;letter-spacing:.1em;padding:4px 9px;border-radius:5px;white-space:nowrap;border:1px solid transparent}
+  .badge.VERIFIED{color:var(--green);background:var(--green-bg);border-color:rgba(39,224,138,.3)}
+  .badge.FORGED{color:var(--red);background:var(--red-bg);border-color:rgba(255,59,82,.35)}
+  .badge.NXDOMAIN{color:var(--dim);background:rgba(107,125,138,.1);border-color:var(--line)}
+  .badge.FALLBACK{color:var(--amber);background:var(--amber-bg);border-color:rgba(255,176,46,.3)}
+  .row.FORGED{background:linear-gradient(90deg,var(--red-bg),transparent)}
+
+  /* ── Threats ──────────────────────────────────── */
+  .threat{padding:11px 15px;border-bottom:1px solid rgba(28,40,50,.5)}
+  .threat:last-child{border-bottom:0}
+  .threat .top{display:flex;align-items:center;gap:8px}
+  .threat .top .dom{color:#ffd9de;font-weight:600;font-family:var(--disp);letter-spacing:.03em}
+  .threat .d{color:var(--dim);font-size:11px;margin-top:5px}
+  .threat .d .x{color:var(--red)} .threat .d .ok{color:var(--green)}
+  .empty{padding:30px 15px;text-align:center;color:var(--faint);font-size:12px}
+  .empty .big{font-family:var(--disp);font-size:14px;color:var(--green);letter-spacing:.1em;margin-bottom:6px}
+
+  /* ── Ledger ───────────────────────────────────── */
+  .block{display:flex;align-items:center;gap:12px;padding:9px 15px;border-bottom:1px solid rgba(28,40,50,.5);font-size:11px}
+  .block:last-child{border-bottom:0}
+  .block .ix{font-family:var(--disp);font-weight:700;color:var(--blue);min-width:34px}
+  .block .op{font-size:9.5px;letter-spacing:.1em;padding:2px 6px;border-radius:4px;border:1px solid var(--line);color:var(--dim)}
+  .block .op.REGISTER{color:var(--green);border-color:rgba(39,224,138,.3)}
+  .block .op.UPDATE{color:var(--amber);border-color:rgba(255,176,46,.3)}
+  .block .op.GENESIS{color:var(--violet);border-color:rgba(157,123,255,.3)}
+  .block .info{flex:1;min-width:0}
+  .block .info .d{color:var(--ink)}
+  .block .info .h{color:var(--faint);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .block.bad{background:var(--red-bg)}
+  .block.bad .ix{color:var(--red)}
+
+  /* ── Controls ─────────────────────────────────── */
+  .ctrls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{font-family:var(--disp);font-weight:600;letter-spacing:.06em;font-size:12px;padding:11px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer;transition:.15s;text-align:left;display:flex;flex-direction:column;gap:3px}
+  .btn .s{font-family:var(--mono);font-weight:400;font-size:10px;color:var(--dim);letter-spacing:0}
+  .btn:hover{border-color:var(--blue);transform:translateY(-1px)}
+  .btn.danger:hover{border-color:var(--red)}
+  .btn.warn:hover{border-color:var(--amber)}
+  .btn.good:hover{border-color:var(--green)}
+  .btn:active{transform:translateY(0)}
+  .integrity-banner{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:9px;border:1px solid var(--line);font-family:var(--disp);letter-spacing:.05em}
+  .integrity-banner.ok{background:var(--green-bg);border-color:rgba(39,224,138,.35);color:var(--green)}
+  .integrity-banner.bad{background:var(--red-bg);border-color:rgba(255,59,82,.4);color:var(--red);animation:flash 1s ease infinite}
+  @keyframes flash{50%{border-color:var(--red)}}
+  .integrity-banner .ico{font-size:18px}
+  .integrity-banner small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:0;margin-top:2px}
+  .hint{color:var(--faint);font-size:10.5px;margin-top:10px;line-height:1.5}
+  footer{margin-top:26px;color:var(--faint);font-size:10.5px;text-align:center;letter-spacing:.1em}
+  @media(max-width:1080px){.tiles{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}}
+  @media(max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}.ctrls{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5l-8-3Z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="title">BLOCKCHAIN&nbsp;DNS · <b>SOC</b></div>
+        <div class="subtitle">Spoof-Proof Resolution · Live Tamper Detection</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill"><span class="dot" id="wsDot"></span><span id="wsState">CONNECTING…</span></div>
+    <div class="pill clock" id="clock">--:--:--</div>
+  </header>
+
+  <!-- Stat tiles -->
+  <div class="tiles">
+    <div class="tile blue"><span class="edge"></span><div class="k">Queries Traced</div><div class="v" id="s_total">0</div><div class="sub">all resolutions</div></div>
+    <div class="tile green"><span class="edge"></span><div class="k">Verified</div><div class="v" id="s_verified">0</div><div class="sub">matched ledger</div></div>
+    <div class="tile red"><span class="edge"></span><div class="k">Forgeries Blocked</div><div class="v" id="s_forged">0</div><div class="sub">spoof / poison</div></div>
+    <div class="tile amber"><span class="edge"></span><div class="k">Upstream Fallback</div><div class="v" id="s_fallback">0</div><div class="sub">unverifiable</div></div>
+    <div class="tile violet"><span class="edge"></span><div class="k">Chain Height</div><div class="v" id="s_height">0</div><div class="sub">committed blocks</div></div>
+    <div class="tile green"><span class="edge"></span><div class="k">Ledger Integrity</div><div class="v" id="s_integrity" style="font-size:22px">—</div><div class="sub" id="s_integrity_sub">awaiting scan</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- Left column -->
+    <div class="col">
+      <div class="card">
+        <div class="card-h"><h2>Live Query Trace</h2><span class="count" id="feedCount">0 events</span></div>
+        <div class="card-b" id="feed"><div class="empty">No queries yet — run <b>Generate Traffic</b> or a simulated attack.</div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>On-Chain Ledger</h2><span class="count" id="ledgerCount"></span></div>
+        <div class="card-b" id="ledger"></div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="col">
+      <div class="card">
+        <div class="card-h"><h2>Threat Console</h2><span class="count" id="threatCount">0</span></div>
+        <div class="card-b" id="threats"><div class="empty"><div class="big">ALL CLEAR</div>No forged responses detected.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Operator Controls</h2></div>
+        <div class="card-b pad">
+          <div id="integrityBanner" class="integrity-banner ok"><span class="ico">✓</span><div>LEDGER VERIFIED<small id="integrityDetail">All blocks hash-linked & consistent.</small></div></div>
+          <div class="ctrls" style="margin-top:13px">
+            <button class="btn good" onclick="genTraffic()">▶ Generate Traffic<span class="s">benign + stray query load</span></button>
+            <button class="btn danger" onclick="spoof()">⚡ Simulate DNS Spoof<span class="s">forged answer vs ledger</span></button>
+            <button class="btn warn" onclick="tamper()">⛏ Tamper Ledger Block<span class="s">mutate a committed record</span></button>
+            <button class="btn" onclick="scan()">🛡 Run Integrity Scan<span class="s">verify whole chain</span></button>
+          </div>
+          <div class="hint">The blockchain is the single source of truth. Every observed answer is compared against the on-chain record; anything that disagrees is rejected as <b style="color:var(--red)">FORGED</b>. Tampering with any block breaks its hash linkage and is caught on the next scan.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>BLOCKCHAIN DNS SOC · ledger-anchored DNS monitoring · all telemetry generated locally</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let feedN = 0;
+
+// ── Clock ───────────────────────────────────────
+setInterval(()=>{ $('clock').textContent = new Date().toLocaleTimeString('en-GB'); }, 1000);
+
+// ── WebSocket live feed ─────────────────────────
+let ws;
+function connect(){
+  ws = new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
+  ws.onopen = ()=>{ $('wsDot').className='dot live'; $('wsState').textContent='LIVE'; };
+  ws.onclose = ()=>{ $('wsDot').className='dot'; $('wsState').textContent='RECONNECTING…'; setTimeout(connect,1500); };
+  ws.onmessage = e=>{
+    const {kind,payload} = JSON.parse(e.data);
+    if(kind==='trace') addTrace(payload);
+    else if(kind==='stats') setStats(payload);
+    else if(kind==='integrity') setIntegrity(payload);
+    else if(kind==='alert') flashAlert(payload);
+  };
+}
+connect();
+
+// ── Stats ───────────────────────────────────────
+function setStats(s){
+  $('s_total').textContent=s.total; $('s_verified').textContent=s.verified;
+  $('s_forged').textContent=s.forged; $('s_fallback').textContent=s.fallback;
+  $('s_height').textContent=s.chain_height;
+}
+
+function setIntegrity(r){
+  const ok=r.valid;
+  $('s_integrity').textContent = ok?'SECURE':'BREACH';
+  $('s_integrity').style.color = ok?'var(--green)':'var(--red)';
+  $('s_integrity_sub').textContent = ok?`${r.checked_blocks} blocks verified`:`${r.breaks.length} break(s) found`;
+  const b=$('integrityBanner');
+  if(ok){ b.className='integrity-banner ok'; b.querySelector('.ico').textContent='✓';
+    b.querySelector('div').innerHTML='LEDGER VERIFIED<small>All '+r.checked_blocks+' blocks hash-linked & consistent.</small>'; }
+  else { b.className='integrity-banner bad'; b.querySelector('.ico').textContent='⚠';
+    const first=r.breaks[0];
+    b.querySelector('div').innerHTML='TAMPER DETECTED<small>Block #'+first.index+' · '+first.type+'</small>'; }
+  loadLedger(r.breaks||[]);
+}
+
+// ── Live trace rows ─────────────────────────────
+function addTrace(e){
+  const feed=$('feed');
+  if(feedN===0) feed.innerHTML='';
+  const row=document.createElement('div');
+  row.className='row '+e.verdict;
+  const time=new Date(e.timestamp*1000).toLocaleTimeString('en-GB');
+  let meta='';
+  if(e.verdict==='FORGED') meta=`observed <b>${e.observed_value}</b> · ledger ${e.onchain_value}`;
+  else if(e.verdict==='VERIFIED') meta=`→ ${e.onchain_value} · ${e.source_ip}`;
+  else if(e.verdict==='FALLBACK') meta=`upstream DNS · ${e.source_ip}`;
+  else meta=`not on-chain · ${e.source_ip}`;
+  row.innerHTML=`<div class="t">${time}</div>
+    <div class="mid"><div class="dom">${e.domain}</div><div class="meta">${meta}</div></div>
+    <div class="badge ${e.verdict}">${e.verdict}</div>`;
+  feed.prepend(row);
+  while(feed.children.length>60) feed.removeChild(feed.lastChild);
+  feedN++; $('feedCount').textContent=feedN+' events';
+}
+
+// ── Threat console ──────────────────────────────
+async function loadThreats(){
+  const t=await (await fetch('/api/threats?limit=40')).json();
+  const box=$('threats'); $('threatCount').textContent=t.length;
+  if(!t.length){ box.innerHTML='<div class="empty"><div class="big">ALL CLEAR</div>No forged responses detected.</div>'; return; }
+  box.innerHTML=t.map(e=>`<div class="threat">
+    <div class="top"><span class="badge FORGED">FORGED</span><span class="dom">${e.domain}</span></div>
+    <div class="d">Source ${e.source_ip} returned <span class="x">${e.observed_value}</span>, ledger says <span class="ok">${e.onchain_value}</span>. Response rejected.</div>
+  </div>`).join('');
+}
+
+function flashAlert(p){ loadThreats(); }
+
+// ── Ledger view ─────────────────────────────────
+async function loadLedger(breaks){
+  breaks = breaks||[];
+  const data=await (await fetch('/api/chain')).json();
+  const badIdx=new Set(breaks.map(b=>b.index));
+  $('ledgerCount').textContent=data.height+' blocks';
+  $('ledger').innerHTML=data.blocks.slice().reverse().map(b=>`
+    <div class="block ${badIdx.has(b.index)?'bad':''}">
+      <span class="ix">#${b.index}</span>
+      <span class="op ${b.operation}">${b.operation}</span>
+      <div class="info">
+        <div class="d">${b.domain||'∅'} ${b.record_value?'→ '+b.record_value:''}</div>
+        <div class="h">${b.hash}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Control actions ─────────────────────────────
+async function genTraffic(){ await fetch('/api/simulate/traffic?count=14',{method:'POST'}); }
+async function spoof(){
+  await fetch('/api/simulate/spoof',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({domain:'bank.chain',forged_value:'6.6.6.6',source_ip:'10.13.37.66'})});
+}
+async function tamper(){
+  await fetch('/api/simulate/tamper',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({new_value:'66.66.66.66'})});
+}
+async function scan(){ await fetch('/api/integrity'); }
+
+// ── Boot ────────────────────────────────────────
+(async function init(){
+  setStats(await (await fetch('/api/stats')).json());
+  setIntegrity(await (await fetch('/api/integrity')).json());
+  // Backfill the live feed with recent events (oldest first so newest lands on top).
+  const recent = await (await fetch('/api/events?limit=40')).json();
+  recent.reverse().forEach(addTrace);
+  loadThreats();
+})();
+</script>
+</body>
+</html>

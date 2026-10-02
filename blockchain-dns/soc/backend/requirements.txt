@@ -1,0 +1,5 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.6
+# Optional: only needed to connect the resolver to a real Ethereum node.
+# web3>=6.15
